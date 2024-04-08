@@ -22,6 +22,7 @@ date_time = time.strftime("%m-%d-%Y_%H:%M:%S")
 import json
 from utils import read_from_jsonl
 import itertools
+import numpy as np
 
 """
 Trains a classifier for the specified styles
@@ -156,10 +157,34 @@ def main(args):
                 predictions, labels = eval_pred
                 predictions = torch.argmax(torch.tensor(predictions), dim=-1).tolist()
                 labels = [a[1].item() for a in torch.nonzero(torch.tensor(labels))]
-                return {'acc': sum([a == b for a, b in zip(predictions, labels)])/len(predictions)}
+                
+                # Initialize dictionaries to track correct and total predictions per class
+                correct_predictions_per_class = {}
+                total_predictions_per_class = {}
+                
+                # Loop through all predictions and labels
+                for pred, label in zip(predictions, labels):
+                    if label not in total_predictions_per_class:
+                        total_predictions_per_class[label] = 0
+                        correct_predictions_per_class[label] = 0
+                    total_predictions_per_class[label] += 1
+                    
+                    if pred == label:
+                        correct_predictions_per_class[label] += 1
+                
+                # Calculate accuracy for each class
+                accuracy_per_class = {rev_style_dict[label] + "_acc": correct / total for label, correct, total in zip(total_predictions_per_class.keys(), correct_predictions_per_class.values(), total_predictions_per_class.values())}
+                
+                # Calculate overall accuracy
+                overall_accuracy = sum(correct_predictions_per_class.values()) / sum(total_predictions_per_class.values())
+                assert overall_accuracy == sum([a == b for a, b in zip(predictions, labels)])/len(predictions)
 
+                # Combine overall accuracy with per-class accuracies
+                accuracy_results = {'overall_acc': overall_accuracy, 'acc_product': np.prod(list(accuracy_per_class.values())), **accuracy_per_class}
+                return accuracy_results
+            
             compute_metrics = accuracy
-            metric_for_best_model = 'acc'
+            metric_for_best_model = 'overall_acc'
             greater_is_better = True
 
         args = TrainingArguments(
