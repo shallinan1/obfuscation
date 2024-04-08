@@ -19,3 +19,11 @@ def save_to_jsonl(data, filename):
         for item in data:
             json_record = json.dumps(item, ensure_ascii=False)
             f.write(json_record + '\n')
+
+def read_from_jsonl(filename):
+    """Reads data from a JSONL file and returns a list of items."""
+    data = []
+    with open(filename, 'r', encoding='utf-8') as f:
+        for line in f:
+            data.append(json.loads(line))
+    return data
